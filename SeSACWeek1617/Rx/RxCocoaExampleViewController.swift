@@ -10,7 +10,7 @@ import RxCocoa
 import RxSwift
 
 class RxCocoaExampleViewController: UIViewController {
-
+    
     @IBOutlet weak var simpleTableView: UITableView!
     @IBOutlet weak var simplePickerView: UIPickerView!
     @IBOutlet weak var simpleLabel: UILabel!
@@ -20,11 +20,23 @@ class RxCocoaExampleViewController: UIViewController {
     @IBOutlet weak var signEmail: UITextField!
     @IBOutlet weak var signButton: UIButton!
     
-    let disposeBag = DisposeBag()
+    @IBOutlet weak var nicknameLabel: UILabel!
+    
+    var disposeBag = DisposeBag()
+    
+    var nickname = Observable.just("jack")
     
     override func viewDidLoad() {
         super.viewDidLoad()
-
+        
+        nickname
+            .bind(to: nicknameLabel.rx.text)
+            .disposed(by: disposeBag)
+        
+//        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+//            self.nickname = "HELLO"
+//        }
+        
         setTableView()
         setPickerView()
         setSwitch()
@@ -32,11 +44,41 @@ class RxCocoaExampleViewController: UIViewController {
         setOperator()
     }
     
+    //viewController deinit되면, 알아서 dispose도 알아서 동작함
+    //또는 DisposeBag() 객체를 새롭게 넣어주거나, nil 할당 -> 예외 케이스!(rootvc에 interval과 같은 무한 시퀀스가 있다면?)
+    deinit {
+        print("RxCocoaExampleViewController")
+    }
+    
     func setOperator() {
+        
+        Observable.repeatElement("Jack")
+            .take(5) //Finite Observable Sequence
+            .subscribe { value in
+                print("repeat - \(value)")
+            } onError: { error in
+                print("repeat - \(error)")
+            } onCompleted: {
+                print("repeat completed")
+            } onDisposed: {
+                print("repeat disposed")
+            }
+            .disposed(by: disposeBag)
+        
+        Observable<Int>.interval(.seconds(1), scheduler: MainScheduler.instance)
+            .subscribe { value in
+                print("interval - \(value)")
+            } onError: { error in
+                print("interval - \(error)")
+            } onCompleted: {
+                print("interval completed")
+            } onDisposed: {
+                print("interval disposed")
+            }
+            .disposed(by: disposeBag)
         
         let itemsA = [3.3, 4.0, 5.0, 2.0, 3.6, 4.8]
         let itemsB = [2.3, 2.0, 1.3]
-        
         
         Observable.just(itemsA)
             .subscribe { value in
@@ -74,31 +116,6 @@ class RxCocoaExampleViewController: UIViewController {
             }
             .disposed(by: disposeBag)
         
-        Observable.repeatElement("Jack")
-            .take(5)
-            .subscribe { value in
-                print("repeat - \(value)")
-            } onError: { error in
-                print("repeat - \(error)")
-            } onCompleted: {
-                print("repeat completed")
-            } onDisposed: {
-                print("repeat disposed")
-            }
-            .disposed(by: disposeBag)
-        
-        Observable<Int>.interval(.seconds(1), scheduler: MainScheduler.instance)
-            .subscribe { value in
-                print("interval - \(value)")
-            } onError: { error in
-                print("interval - \(error)")
-            } onCompleted: {
-                print("interval completed")
-            } onDisposed: {
-                print("interval disposed")
-            }
-            .disposed(by: disposeBag)
-
     }
     
     func setSign() {
@@ -126,10 +143,11 @@ class RxCocoaExampleViewController: UIViewController {
             .disposed(by: disposeBag)
         
         signButton.rx.tap
-//            .bind(to: simpleLabel.rx.text)
+        //            .bind(to: simpleLabel.rx.text)
         //화면 띄워주기와 같은 액션은 subscribe로 사용함
-            .subscribe { _ in
-                self.showAlert()
+            .withUnretained(self)
+            .subscribe { vc, _ in
+                vc.showAlert()
             }
             .disposed(by: disposeBag)
     }
@@ -156,15 +174,15 @@ class RxCocoaExampleViewController: UIViewController {
             "Second Item",
             "Third Item"
         ])
-
+        
         //cellForRowAt과 비슷한 느낌
         items
-        .bind(to: simpleTableView.rx.items) { (tableView, row, element) in
-            let cell = tableView.dequeueReusableCell(withIdentifier: "Cell")!
-            cell.textLabel?.text = "\(element) @ row \(row)"
-            return cell
-        }
-        .disposed(by: disposeBag)
+            .bind(to: simpleTableView.rx.items) { (tableView, row, element) in
+                let cell = tableView.dequeueReusableCell(withIdentifier: "Cell")!
+                cell.textLabel?.text = "\(element) @ row \(row)"
+                return cell
+            }
+            .disposed(by: disposeBag)
         
         //item은 indexPath, model은 Data
         //항상 마지막에 disposed 필수!
@@ -180,12 +198,12 @@ class RxCocoaExampleViewController: UIViewController {
     
     func setPickerView() {
         let items = Observable.just([
-                "영화",
-                "애니메이션",
-                "드라마",
-                "기타"
-            ])
-     
+            "영화",
+            "애니메이션",
+            "드라마",
+            "기타"
+        ])
+        
         items
             .bind(to: simplePickerView.rx.itemTitles) { (row, element) in
                 return element
@@ -197,10 +215,10 @@ class RxCocoaExampleViewController: UIViewController {
         //받아온 정보에 대해서 타입이 맞지 않으므로 아래와 같이 map을 사용해서 계속 변화를 줌
             .map { $0.first }
             .bind(to: simpleLabel.rx.text)
-//            .subscribe { value in
-//                print(value)
-//            }
+        //            .subscribe { value in
+        //                print(value)
+        //            }
             .disposed(by: disposeBag)
     }
-
+    
 }
