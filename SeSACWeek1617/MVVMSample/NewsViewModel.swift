@@ -6,12 +6,13 @@
 //
 
 import Foundation
+import RxSwift
 
 class NewsViewModel {
     
-    var pageNumber: CObservable<String> = CObservable("3000")
+    var pageNumber = BehaviorSubject(value: "3000")
     
-    var sample: CObservable<[News.NewsItem]> = CObservable(News.items)
+    var list = PublishSubject<[News.NewsItem]>()
     
     func changeFormatPageNumber(text: String) {
         let numberFormatter = NumberFormatter()
@@ -19,15 +20,15 @@ class NewsViewModel {
         let text = text.replacingOccurrences(of: ",", with: "")
         guard let number = Int(text) else { return } //처음에 ,가 들어간 형태로 변경이 되면 ,가 들어갔기 때문에 Int로 형변환이 불가해지기 때문에 Return 되버림!
         let result = numberFormatter.string(for: number)!
-        pageNumber.value = result
-    }
-    
-    func resetSample() {
-        sample.value = []
+        pageNumber.onNext(result)
     }
     
     func loadSample() {
-        sample.value = News.items
+        list.onNext(News.itemsInternal())
+    }
+    
+    func resetSample() {
+        list.onNext([])
     }
     
 }

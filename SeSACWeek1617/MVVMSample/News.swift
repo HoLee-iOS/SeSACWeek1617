@@ -6,6 +6,8 @@
 //
 
 import Foundation
+import RxSwift
+import RxCocoa
 
 struct News {
     
@@ -32,7 +34,7 @@ struct News {
 }
 
 extension News {
-    private static func itemsInternal() -> [NewsItem] {
+    static func itemsInternal() -> [NewsItem] {
         return [ NewsItem(title: "Conference 2019 Registration Now Open",
                               date: DateComponents(year: 2019, month: 3, day: 14), body: """
                     Register by Wednesday, March 20, 2019 at 5:00PM PSD for your chance to join us and thousands

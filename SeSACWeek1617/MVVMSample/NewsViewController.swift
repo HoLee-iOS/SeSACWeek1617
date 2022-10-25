@@ -6,6 +6,8 @@
 //
 
 import UIKit
+import RxSwift
+import RxCocoa
 
 class NewsViewController: UIViewController {
 
@@ -19,53 +21,62 @@ class NewsViewController: UIViewController {
     
     var dataSource: UICollectionViewDiffableDataSource<Int, News.NewsItem>!
     
+    let disposeBag = DisposeBag()
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-
+        
         configureHierachy()
         configureDataSource()
         bindData()
-        configureViews()
     }
     
     func bindData() {
         //2. 뷰모델이 가지고 있는 데이터를 뷰컨에서 쓸 수 있게 넘겨줌
         //value가 변경될 때 마다 실행! 뷰디드로드에 있지만 뷰디드로드 시점에만 실행되지 않고 실시간으로 값이 변할때마다 실행됨!
-        viewModel.pageNumber.bind { value in
-            print("bind == \(value)")
-            self.numberTextField.text = value
-        }
+        numberTextField.rx.text.orEmpty
+            .withUnretained(self)
+            .debounce(RxTimeInterval.seconds(1), scheduler: MainScheduler.instance)
+            .bind { (vc, value) in
+            vc.viewModel.changeFormatPageNumber(text: value)
+            }
+            .disposed(by: disposeBag)
         
-        viewModel.sample.bind { items in
+        loadButton.rx.tap
+            .withUnretained(self)
+            .subscribe { (vc, _) in
+                vc.viewModel.loadSample()
+            }
+            .disposed(by: disposeBag)
+        
+        resetButton.rx.tap
+            .withUnretained(self)
+            .subscribe { (vc, _) in
+                vc.viewModel.resetSample()
+            }
+            .disposed(by: disposeBag)
+        
+        viewModel.pageNumber
+            .withUnretained(self)
+            .bind { (vc, value) in
+                vc.numberTextField.text = value
+            }
+            .disposed(by: disposeBag)
+        
+        viewModel.list
+            .withUnretained(self)
+            .bind { (vc, items) in
             var snapshot = NSDiffableDataSourceSnapshot<Int, News.NewsItem>()
             snapshot.appendSections([0])
             snapshot.appendItems(items) //itemIdentifier에 들어감!
-            self.dataSource.apply(snapshot, animatingDifferences: true)
-        }
-    }
-    
-    func configureViews() {
-        numberTextField.addTarget(self, action: #selector(numberTextFieldChanged), for: .editingChanged)
-        resetButton.addTarget(self, action: #selector(resetButtonTapped), for: .touchUpInside)
-        loadButton.addTarget(self, action: #selector(loadButtonTapped), for: .touchUpInside)
-    }
-    
-    @objc func numberTextFieldChanged() {
-        print(#function)
-        guard let text = numberTextField.text else { return }
-        viewModel.changeFormatPageNumber(text: text)
-    }
-    
-    @objc func resetButtonTapped() {
-        viewModel.resetSample()
-    }
-    
-    @objc func loadButtonTapped() {
-        viewModel.loadSample()
+            vc.dataSource.apply(snapshot, animatingDifferences: true)
+            }
+            .disposed(by: disposeBag)
     }
 }
 
 extension NewsViewController {
+    
     func configureHierachy() { //addSubview, init, snapkit
         collectionView.collectionViewLayout = createLayout()
         collectionView.backgroundColor = .lightGray
