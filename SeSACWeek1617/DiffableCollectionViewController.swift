@@ -8,12 +8,17 @@
 import UIKit
 import Kingfisher
 
-class DiffableCollectionViewController: UIViewController {
+import RxSwift
+import RxCocoa
 
+class DiffableCollectionViewController: UIViewController {
+    
     @IBOutlet weak var collectionView: UICollectionView!
     @IBOutlet weak var searchBar: UISearchBar!
     
     var viewModel = DiffableViewModel()
+    
+    let disposeBag = DisposeBag()
     
     //<섹션, row에 들어갈 내용>의 형태
     private var dataSource: UICollectionViewDiffableDataSource<Int, SearchResult>!
@@ -21,42 +26,43 @@ class DiffableCollectionViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        collectionView.collectionViewLayout = createLayout()
+        configureHierachy()
         configureDataSource()
-        collectionView.delegate = self
-        
-        searchBar.delegate = self
-        
-        viewModel.photoList.bind { photo in
-            //Initial
-            var snapshot = NSDiffableDataSourceSnapshot<Int, SearchResult>()
-            snapshot.appendSections([0])
-            snapshot.appendItems(photo.results)
-            self.dataSource.apply(snapshot)
-        }
-    }
-
-}
-
-extension DiffableCollectionViewController: UICollectionViewDelegate {
-    
-    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        
-//        guard let item = dataSource.itemIdentifier(for: indexPath) else { return }
-//        let item = dataSource.snapshot().itemIdentifiers[indexPath.item]
-//        let alert = UIAlertController(title: item, message: "클릭!", preferredStyle: .alert)
-//        let ok = UIAlertAction(title: "확인", style: .cancel)
-//        alert.addAction(ok)
-//        present(alert, animated: true)
-        
+        bindData()        
     }
     
-}
-
-extension DiffableCollectionViewController: UISearchBarDelegate {
+    func bindData() {
+        viewModel.photoList
+            .withUnretained(self)
+            .subscribe(onNext: { (vc, photo) in
+                var snapshot = NSDiffableDataSourceSnapshot<Int, SearchResult>()
+                snapshot.appendSections([0])
+                snapshot.appendItems(photo.results)
+                vc.dataSource.apply(snapshot)
+            }, onError: { error in
+                print("=====error: \(error)")
+            }, onCompleted: {
+                print("completed")
+            }, onDisposed: {
+                print("disposed")
+            })
+            .disposed(by: disposeBag)
+        
+        searchBar
+            .rx
+            .text
+            .orEmpty
+            .debounce(.seconds(1), scheduler: MainScheduler.instance)
+            .distinctUntilChanged()
+            .withUnretained(self)
+            .subscribe { (vc, value) in
+                vc.viewModel.requestSearchPhoto(query: value)
+            }
+            .disposed(by: disposeBag)
+    }
     
-    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
-        viewModel.requestSearchPhoto(query: searchBar.text!)
+    func configureHierachy() {
+        collectionView.collectionViewLayout = createLayout()
     }
     
 }

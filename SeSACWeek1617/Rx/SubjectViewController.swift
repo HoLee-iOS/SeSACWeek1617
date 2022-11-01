@@ -30,43 +30,95 @@ class SubjectViewController: UIViewController {
         
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "ContactCell")
         
-        viewModel.list
-            .bind(to: tableView.rx.items(cellIdentifier: "ContactCell", cellType: UITableViewCell.self)) { (row, element, cell) in
+        
+        let input = SubjectViewModel.Input(addTap: addButton.rx.tap, resetTap: resetButton.rx.tap, newTap: newButton.rx.tap, searchText: searchBar.rx.text)
+        let output = viewModel.transform(input: input)
+        
+        
+        
+        output.list
+            .drive(tableView.rx.items(cellIdentifier: "ContactCell", cellType: UITableViewCell.self)) { (row, element, cell) in
                 cell.textLabel?.text = "\(element.name): \(element.age)세 (\(element.number))"
             }
             .disposed(by: disposeBag)
         
-        //tap 했을 경우 기능 구현을 하고 싶다면 subscribe 사용
-        addButton.rx.tap
+//        viewModel.list //VM -> VC 데이터 전달 (Output)
+//            .asDriver(onErrorJustReturn: [])
+//            .drive(tableView.rx.items(cellIdentifier: "ContactCell", cellType: UITableViewCell.self)) { (row, element, cell) in
+//                cell.textLabel?.text = "\(element.name): \(element.age)세 (\(element.number))"
+//            }
+//            .disposed(by: disposeBag)
+        
+        
+        
+        output.addTap
             .withUnretained(self)
             .subscribe { (vc, _) in
                 vc.viewModel.fetchData()
             }
             .disposed(by: disposeBag)
         
-        resetButton.rx.tap
+        //tap 했을 경우 기능 구현을 하고 싶다면 subscribe 사용
+//        addButton.rx.tap //VC -> VM (Input)
+//            .withUnretained(self)
+//            .subscribe { (vc, _) in
+//                vc.viewModel.fetchData()
+//            }
+//            .disposed(by: disposeBag)
+        
+        
+        
+        output.resetTap
             .withUnretained(self)
             .subscribe { (vc, _) in
                 vc.viewModel.resetData()
             }
             .disposed(by: disposeBag)
         
-        newButton.rx.tap
+//        resetButton.rx.tap //VC -> VM (Input)
+//            .withUnretained(self)
+//            .subscribe { (vc, _) in
+//                vc.viewModel.resetData()
+//            }
+//            .disposed(by: disposeBag)
+        
+        
+        
+        output.newTap
             .withUnretained(self)
             .subscribe { (vc, _) in
                 vc.viewModel.newData()
             }
             .disposed(by: disposeBag)
         
-        searchBar.rx.text.orEmpty
-            .distinctUntilChanged() //같은 값을 받지 않음
+//        newButton.rx.tap //VC -> VM (Input)
+//            .withUnretained(self)
+//            .subscribe { (vc, _) in
+//                vc.viewModel.newData()
+//            }
+//            .disposed(by: disposeBag)
+        
+        
+        
+        output.searchText
             .withUnretained(self)
-            .debounce(RxTimeInterval.seconds(1), scheduler: MainScheduler.instance) //wait
             .subscribe { (vc, value) in
                 print("=====\(value)")
                 vc.viewModel.filterData(query: value)
             }
             .disposed(by: disposeBag)
+        
+        //서치바 때문에 초기값이 없다가 생김
+//        searchBar.rx.text  //VC -> VM (Input)
+//            .orEmpty
+//            .distinctUntilChanged() //같은 값을 받지 않음
+//            .debounce(RxTimeInterval.seconds(1), scheduler: MainScheduler.instance) //wait
+//            .withUnretained(self)
+//            .subscribe { (vc, value) in
+//                print("=====\(value)")
+//                vc.viewModel.filterData(query: value)
+//            }
+//            .disposed(by: disposeBag)
     }
     
 }

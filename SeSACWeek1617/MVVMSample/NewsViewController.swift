@@ -32,13 +32,14 @@ class NewsViewController: UIViewController {
     }
     
     func bindData() {
+        
         //2. 뷰모델이 가지고 있는 데이터를 뷰컨에서 쓸 수 있게 넘겨줌
         //value가 변경될 때 마다 실행! 뷰디드로드에 있지만 뷰디드로드 시점에만 실행되지 않고 실시간으로 값이 변할때마다 실행됨!
         numberTextField.rx.text.orEmpty
             .withUnretained(self)
             .debounce(RxTimeInterval.seconds(1), scheduler: MainScheduler.instance)
             .bind { (vc, value) in
-            vc.viewModel.changeFormatPageNumber(text: value)
+                vc.viewModel.changeFormatPageNumber(text: value)
             }
             .disposed(by: disposeBag)
         
